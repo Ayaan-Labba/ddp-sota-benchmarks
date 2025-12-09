@@ -6,29 +6,7 @@ import xml.etree.ElementTree as ET
 
 from tqdm.auto import tqdm
 from datasets import dataset_dict
-from typing import List
-
-# Standard Format:
-# {
-#     "id": str,
-#     "text": str,
-#     "entities": [
-#         {
-#             "text": str,
-#             "type", str,
-#             "offsets": [(int, int), ...]
-#         }, 
-#         ...
-#         ],
-#     "relations": [
-#         {
-#             "type": str,
-#             "head", dict(entity),
-#             "tail", dict(entity)
-#         },
-#         ...
-#         ]
-# }
+from typing import List, Dict
 
 def clean_text(text_str: str) -> str:
     """
@@ -43,6 +21,38 @@ def clean_text(text_str: str) -> str:
 def process_bigbio(dataset_dicts: List[dataset_dict], name: str, splits: List[str]) -> None:
     """
     Process a HuggingFace bigbio dataset into the standard format and save to "data/{name}/{split}.jsonl".
+
+    Standard Format:
+    {
+        "id": str,
+        "text": str,
+        "entities": 
+            [
+                {
+                    "text": str,
+                    "type", str,
+                    "offsets": [(int, int), ...]
+                }, 
+                ...
+            ],
+        "relations": 
+            [
+                {
+                    "type": str,
+                    "head", dict(entity),
+                    "tail", dict(entity)
+                },
+                ...
+            ]
+    }
+
+    Args:
+        dataset_dicts (List[dataset_dict]): List of HuggingFace dataset splits for the given dataset.
+        name (str): Name of the dataset (e.g., "ChemProt").
+        splits (List[str]): List of split names corresponding to dataset_dicts (e.g., ["train", "validation", "test"]).
+    
+    Returns:
+        None
     """
     print(f"Processing {name} dataset ...\n")
     output_dir = f"../data/{name.lower()}"
@@ -98,6 +108,37 @@ def process_bigbio(dataset_dicts: List[dataset_dict], name: str, splits: List[st
 def process_bc5cdr(dataset_paths: List[str], splits: List[str]) -> None:
     """
     Process BC5CDR BioC XML files into the standard format and save to "data/bc5cdr/{split}.jsonl".
+
+    Standard Format:
+    {
+        "id": str,
+        "text": str,
+        "entities": 
+            [
+                {
+                    "text": str,
+                    "type", str,
+                    "offsets": [(int, int), ...]
+                }, 
+                ...
+            ],
+        "relations": 
+            [
+                {
+                    "type": str,
+                    "head", dict(entity),
+                    "tail", dict(entity)
+                },
+                ...
+            ]
+    }
+
+    Args:
+        dataset_paths (List[str]): List of file paths to the BC5CDR XML files.
+        splits (List[str]): List of split names corresponding to dataset_paths (e.g., ["train", "validation", "test"]).
+    
+    Returns:
+        None
     """
     print(f"Processing BC5CDR dataset ...\n")
     output_dir = "../data/bc5cdr"
@@ -173,6 +214,37 @@ def process_bc5cdr(dataset_paths: List[str], splits: List[str]) -> None:
 def process_biored(dataset_paths: List[str], splits: List[str]) -> None:
     """
     Process BioRED BioC JSON files into the standard format and save to "data/biored/{split}.jsonl".
+
+    Standard Format:
+    {
+        "id": str,
+        "text": str,
+        "entities": 
+            [
+                {
+                    "text": str,
+                    "type", str,
+                    "offsets": [(int, int), ...]
+                }, 
+                ...
+            ],
+        "relations": 
+            [
+                {
+                    "type": str,
+                    "head", dict(entity),
+                    "tail", dict(entity)
+                },
+                ...
+            ]
+    }
+
+    Args:
+        dataset_paths (List[str]): List of file paths to the BioRED JSON files.
+        splits (List[str]): List of split names corresponding to dataset_paths (e.g., ["train", "validation", "test"]).
+    
+    Returns:
+        None
     """
     print(f"Processing BioRED dataset ...\n")
     output_dir = "../data/biored"
@@ -244,9 +316,16 @@ def process_biored(dataset_paths: List[str], splits: List[str]) -> None:
     
     print("Finished processing BioRED dataset.")
 
-def get_types(name: str, splits: List[str]) -> None:
+def get_types(name: str, splits: List[str]) -> Dict[str, List[str]]:
     """
     Saves and returns entity and relation types present in the given dataset.
+
+    Args:
+        name (str): Name of the dataset (e.g., "ChemProt").
+        splits (List[str]): List of splits to check (e.g., ["train", "validation", "test"]).
+    
+    Returns:
+        Dict[str, List[str]]: A dictionary with 'entity_types' and 'relation_types' as keys and lists of types as values.
     """
     print(f"Getting entity and relation types for {name} dataset ...\n")
     ent_types = set()
