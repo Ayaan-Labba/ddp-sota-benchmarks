@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 
 sys.path.append("../")
 
-from configs.config_loader import get_config_loader, DatasetConfig, ModelConfig, LabelMapping, ConfigLoader
+from configs.config_loader import get_config_loader, DatasetConfig, ModelConfig, ConfigLoader
 
 
 class BaseIEDataset(Dataset, ABC):

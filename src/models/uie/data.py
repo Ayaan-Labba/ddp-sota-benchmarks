@@ -5,7 +5,7 @@ from typing import List, Dict, Set, Tuple, Any, Optional
 sys.path.append("../")
 
 from common.data import GenerativeIEDataset
-from configs.config_loader import DatasetConfig, ModelConfig, ConfigLoader
+from configs.config_loader import ConfigLoader
 
 class UIEDataset(GenerativeIEDataset):
     """
