@@ -1,0 +1,8 @@
+# Model-specific configurations
+uie:
+  special_tokens:
+    start: "<extra_id_0>"
+    end: "<extra_id_1>"
+    target: "<extra_id_5>"
+  max_input_length: 512
+  max_output_length: 512

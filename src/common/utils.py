@@ -1,4 +1,5 @@
 import json
+import os
 
 from typing import List, Dict
 
@@ -31,3 +32,20 @@ def save_jsonl(data: List[Dict], file_path: str) -> None:
     with open(file_path, 'w', encoding='utf-8') as f:
         for item in data:
             f.write(json.dumps(item) + '\n')
+
+def save_predictions(predictions: List[Dict[str, any]], output_dir: str, filename: str) -> None:
+    """
+    Saves model predictions to a JSONL file in the specified output directory.
+
+    Args:
+        predictions (List[Dict[str, any]]): List of prediction dictionaries to save.
+        output_dir (str): Predictions output directory.
+        filename (str): Name of the output JSNOL file.
+    
+    Returns:
+        None
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, filename)
+    save_jsonl(predictions, output_path)
+    print(f"Predictions saved to {output_path}")

@@ -1,0 +1,55 @@
+# Label mappings for each dataset
+biored:
+  entities:
+    GeneOrGeneProduct: "gene or gene product"
+    DiseaseOrPhenotypicFeature: "disease or phenotypic feature"
+    ChemicalEntity: "chemical or drug"
+    SequenceVariant: "genomic or protein variant"
+    OrganismTaxon: "species"
+    CellLine: "cell line"
+  relations:
+    Association: "is associated with"
+    Positive_Correlation: "positively correlates with"
+    Negative_Correlation: "negatively correlates with"
+    Bind: "binds to"
+    Cotreatment: "is cotreated with"
+    Comparison: "is compared to"
+    Conversion: "converts to"
+    Drug_Interaction: "interacts with drug"
+
+ddi:
+  entities:
+    DRUG: "drug"
+    GROUP: "groups of drugs"
+    BRAND: "drug brand"
+    DRUG_N: "unapproved drug"
+  relations:
+    MECHANISM: "has mechanism"
+    EFFECT: "has effect"
+    ADVISE: "is advised against"
+    INT: "interacts with"
+
+chemprot:
+  entities:
+    CHEMICAL: "chemical"
+    GENE-N: "gene or protein"
+    GENE-Y: "gene or protein"
+  relations:
+    Agonist: "is agonist of"
+    Antagonist: "is antagonist of"
+    Cofactor: "is cofactor of"
+    Downregulator: "downregulates"
+    Modulator: "modulates"
+    Not: "not related to"
+    Part_of: "is part of"
+    Regulator: "regulates"
+    Substrate: "is substrate of"
+    Undefined: "unkown relation to"
+    Upregulator: "upregulates"
+
+bc5cdr:
+  entities:
+    Chemical: "chemical"
+    Disease: "disease"
+  relations:
+    CID: "causes or induces"
