@@ -1,13 +1,14 @@
 import sys
+import torch
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
-sys.path.append("../")
+# sys.path.append("../")
 
-from configs.config_loader import get_config_loader, DatasetConfig, ModelConfig, ConfigLoader
+from src.configs.config_loader import get_config_loader, DatasetConfig, ModelConfig, ConfigLoader
 
 
 class BaseIEDataset(Dataset, ABC):
@@ -129,6 +130,37 @@ class GenerativeIEDataset(BaseIEDataset):
             'id': example['id'],
             'input_ids': input_encoding['input_ids'].squeeze(),
             'attention_mask': input_encoding['attention_mask'].squeeze(),
-            'labels': label_encoding['input_ids'].squeeze(),
-            'text': example['text']
+            'label_ids': label_encoding['input_ids'].squeeze(),
+            'text': input_text,
+            'label': label_text,
+            'entities': example['entities'],
+            'relations': example['relations']
         }
+
+
+def generative_collate_fn(batch):
+    """
+    Collate function to handle mixed data types (Tensors + Lists).
+    """
+    # Stack the tensors
+    input_ids = torch.stack([item['input_ids'] for item in batch])
+    attention_mask = torch.stack([item['attention_mask'] for item in batch])
+    label_ids = torch.stack([item['label_ids'] for item in batch])
+
+    # Collect the non-tensor metadata as simple lists
+    ids = [item['id'] for item in batch]
+    texts = [item['text'] for item in batch]
+    labels = [item['label'] for item in batch]
+    entities = [item['entities'] for item in batch]
+    relations = [item['relations'] for item in batch]
+
+    return {
+        'input_ids': input_ids,
+        'attention_mask': attention_mask,
+        'label_ids': label_ids,
+        'id': ids,
+        'text': texts,
+        'label': labels,
+        'entities': entities,
+        'relations': relations
+    }

@@ -2,33 +2,6 @@ import json
 
 from typing import List, Dict, Set, Tuple
 
-def get_ground_truth(example: Dict, entity_map: Dict, relation_map: Dict) -> Tuple[Set[Tuple[str, str]], Set[Tuple[str, str, str]]]:
-    """Extracts ground truth entities and relations into sets for comparison.
-    
-    Args:
-        example (Dict): The data example containing entities and relations.
-        entity_map (Dict): Mapping from entity label tokens to standardised types.
-        relation_map (Dict): Mapping from relation label tokens to standardised types.
-
-    Returns:
-        Tuple[Set[Tuple[str, str]], Set[Tuple[str, str, str]]]: Sets of ground truth entities and relations.
-    """
-    gt_entities = set()
-    gt_relations = set()
-
-    for entity in example.get('entities', []):
-        entity_span = entity['text']
-        entity_type = entity_map.get(entity['type'], entity['type'])
-        gt_entities.add((entity_span, entity_type))
-    
-    for relation in example.get('relations', []):
-        head_span = relation['head']['text']
-        tail_span = relation['tail']['text']
-        relation_type = relation_map.get(relation['type'], relation['type'])
-        gt_relations.add((head_span, relation_type, tail_span))
-
-    return gt_entities, gt_relations
-
 def calculate_metrics(preds: List[Tuple[Set, Set]], golds: List[Tuple[Set, Set]]) -> Dict:
     """Calculates precision, recall and f1-score for entities and relations.
     

@@ -1,8 +1,11 @@
 import yaml
+import sys
 
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
+
+# sys.path.append("../../")
 
 @dataclass
 class LabelMapping:
@@ -160,8 +163,8 @@ class ConfigLoader:
 config_loader = None
 
 def get_config_loader(
-    datasets_path: str = "datasets.yaml",
-    models_path: str = "models.yaml",
+    datasets_path: str = None,
+    models_path: str = None,
     reload: bool = False
 ) -> ConfigLoader:
     """
@@ -178,6 +181,14 @@ def get_config_loader(
     global config_loader
     
     if config_loader is None or reload:
+        if datasets_path is None:
+            project_root = Path(__file__).parent.parent.parent
+            datasets_path = project_root / "src/configs/datasets.yaml"
+        
+        if models_path is None:
+            project_root = Path(__file__).parent.parent.parent
+            models_path = project_root / "src/configs/models.yaml"
+        
         config_loader = ConfigLoader(datasets_path, models_path)
     
     return config_loader

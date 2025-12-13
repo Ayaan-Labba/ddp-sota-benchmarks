@@ -2,10 +2,10 @@ import sys
 
 from typing import List, Dict, Set, Tuple, Any, Optional
 
-sys.path.append("../")
+# sys.path.append("../../")
 
-from common.data import GenerativeIEDataset
-from configs.config_loader import ConfigLoader
+from src.common.data import GenerativeIEDataset
+from src.configs.config_loader import ConfigLoader
 
 class UIEDataset(GenerativeIEDataset):
     """
@@ -41,6 +41,7 @@ class UIEDataset(GenerativeIEDataset):
         self.END = self.special_tokens['end']
         self.TARGET = self.special_tokens['target']
 
+    @staticmethod
     def build_ssi(entity_types: List[str], relation_types: List[str]) -> str:
         """
         Builds the Structured Schema Instructor (SSI) string.
@@ -53,8 +54,8 @@ class UIEDataset(GenerativeIEDataset):
         Returns:
             str: The constructed SSI string.
         """
-        ssi = "<spot> " + "<spot> ".join(entity_types)
-        ssi += " <asoc> " + "<asoc> ".join(relation_types)
+        ssi = "<spot> " + " <spot> ".join(entity_types)
+        ssi += " <asoc> " + " <asoc> ".join(relation_types)
         ssi += " <extra_id_2>"
         return ssi
     
@@ -92,119 +93,128 @@ class UIEDataset(GenerativeIEDataset):
             
             records.append(record)
         
-        return " ".join(records).strip()
+        return self.START + " " + " ".join(records).strip() + " " + self.END
     
     @staticmethod
     def parse_sel(sel_string: str, start_token: str, end_token: str, target_token: str) -> List[Dict[str, Any]]:
         """
         Parses the generated SEL string into the structured format using defined markers.
-        
-        Structured format:
-            [
-                {
-                    "span": "{entity span}",
-                    "spot": "{entity type}",
-                    "asoc":
-                        [
-                            ["{relation type}", "{object span}"],
-                            ...
-                        ]
-                },
-                ...
-            ]
-
-        Args:
-            sel_string (str): The SEL string to parse.
-            START (str): Start token.
-            END (str): End token.
-            TARGET (str): Token separating spot and asoc.
-        
-        Returns:
-            structured_output (List[Dict[str, any]]): A list of dictionaries containing parsed triplets.
+        Handles nested start/end tokens for relations within entity records.
         """
         structured_output = []
-
-        # The entire SEL is wrapped in start_token/end_token
+        
+        # Clean the string first
+        sel_string = sel_string.replace('<pad>', '').replace('</s>', '').strip()
+        
+        # SEL is wrapped in start_token and end_token
         if sel_string.startswith(start_token) and sel_string.endswith(end_token):
             sel_string = sel_string[len(start_token):-len(end_token)].strip()
         else:
             return structured_output
-
-        # Each block is wrapped in start_token/end_token
+        
+        # Find all top-level records (start_token...end_token pairs with proper nesting)
         records: List[str] = []
-        start_index = sel_string.find(start_token)
-
-        # Handle cases where the string might not contain any records or is malformed
-        if start_index == -1 and len(sel_string) > 0:
-            return structured_output
-
-        while start_index != -1:
-            end_index = len(sel_string)
-            curr_start = start_index
-            while curr_start < end_index and curr_start != -1 and end_index != -1:
-                end_index = sel_string.find(end_token, curr_start + len(start_token))
-                curr_start = sel_string.find(start_token, curr_start + len(start_token))
+        pos = 0
+        
+        while pos < len(sel_string):
+            start_idx = sel_string.find(start_token, pos)
+            if start_idx == -1:
+                break
             
-            if end_index == -1:
-                return structured_output
+            # Find the matching end token by counting nesting levels
+            nesting_level = 1
+            search_pos = start_idx + len(start_token)
+            end_idx = -1
             
-            # Extract the content between start_token and end_token
-            record_content = sel_string[start_index + len(start_token):end_index].strip()
+            while search_pos < len(sel_string) and nesting_level > 0:
+                # Find next occurrence of either start or end token
+                next_start = sel_string.find(start_token, search_pos)
+                next_end = sel_string.find(end_token, search_pos)
+                
+                if next_end == -1:
+                    # No more end tokens found
+                    break
+                
+                if next_start != -1 and next_start < next_end:
+                    # Found a nested start token first
+                    nesting_level += 1
+                    search_pos = next_start + len(start_token)
+                else:
+                    # Found an end token
+                    nesting_level -= 1
+                    if nesting_level == 0:
+                        end_idx = next_end
+                        break
+                    search_pos = next_end + len(end_token)
+            
+            if end_idx == -1:
+                break
+            
+            # Extract record content
+            record_content = sel_string[start_idx + len(start_token):end_idx].strip()
             if record_content:
                 records.append(record_content)
-
+            
+            # Move past this record
+            pos = end_idx + len(end_token)
+        
         # Process each record
         for record in records:
             try:
-                # Extract entity type
-                start = record.find(start_token)
-                subj_sep = record.find(target_token)
-                if not (start == 0 and subj_sep > start):
+                # Find the first target separator
+                first_target = record.find(target_token)
+                if first_target == -1:
                     continue
                 
-                entity_type = record[start + len(start_token):subj_sep].strip()
-
-                # Extract entity span and relations (if any)
-                remaining_record = record[subj_sep + len(target_token):].strip()
+                # Extract entity type and remaining content
+                entity_type = record[:first_target].strip()
+                remaining = record[first_target + len(target_token):].strip()
                 
-                # Check if there are associations after the main span
-                rel_start = remaining_record.find(start_token)
+                # Find where relations start (if any)
+                rel_start_idx = remaining.find(start_token)
                 
-                subj_span = ""
-                relations = []
-
-                if rel_start != -1: # relations exist
-                    subj_span = remaining_record[:rel_start].strip()
-                    while rel_start != -1:
-                        rel_end = remaining_record.find(end_token, rel_start + len(start_token))
+                if rel_start_idx == -1:
+                    # No relations, entire remaining is the entity span
+                    subj_span = remaining.strip()
+                    relations = []
+                else:
+                    # Entity span is before the first relation
+                    subj_span = remaining[:rel_start_idx].strip()
+                    relations = []
+                    
+                    # Parse all relations
+                    rel_pos = rel_start_idx
+                    while rel_pos < len(remaining):
+                        rel_start = remaining.find(start_token, rel_pos)
+                        if rel_start == -1:
+                            break
+                        
+                        rel_end = remaining.find(end_token, rel_start + len(start_token))
                         if rel_end == -1:
                             break
                         
-                        # Extract the content between START and END
-                        relation_str = remaining_record[rel_start + len(start_token):rel_end].strip()
-                        target_sep = relation_str.find(target_token)
-                        if target_sep == -1:
-                            continue
-
-                        rel_type = relation_str[:target_sep].strip()
-                        obj_span = relation_str[target_sep + len(target_token):].strip()
-                        if rel_type and obj_span:
-                            relations.append((rel_type, obj_span))
+                        # Extract relation content
+                        rel_content = remaining[rel_start + len(start_token):rel_end].strip()
+                        rel_target = rel_content.find(target_token)
                         
-                        rel_start = remaining_record.find(start_token, rel_end + len(end_token))
-
-                else: # no relations, the rest is the entity span
-                    subj_span = remaining_record
-
+                        if rel_target != -1:
+                            rel_type = rel_content[:rel_target].strip()
+                            obj_span = rel_content[rel_target + len(target_token):].strip()
+                            if rel_type and obj_span:
+                                relations.append((rel_type, obj_span))
+                        
+                        # Move to next relation
+                        rel_pos = rel_end + len(end_token)
+                
                 # Add to output if valid
                 if entity_type and subj_span:
                     record_info = {'span': subj_span, 'spot': entity_type, 'asoc': relations}
                     structured_output.append(record_info)
-
+            
             except Exception as e:
-                print(f"Error parsing block: {record}\nError: {e}")
+                print(f"Error parsing record: {record}\nError: {e}")
                 continue
-
+        
         return structured_output
     
     @staticmethod
@@ -241,3 +251,119 @@ class UIEDataset(GenerativeIEDataset):
         """
         parsed = self.parse_sel(sel_string, self.START, self.END, self.TARGET)
         return self.get_sel_preds(parsed)
+
+    # @staticmethod
+    # def parse_sel(sel_string: str, start_token: str, end_token: str, target_token: str) -> List[Dict[str, Any]]:
+    #     """
+    #     Parses the generated SEL string into the structured format using defined markers.
+        
+    #     Structured format:
+    #         [
+    #             {
+    #                 "span": "{entity span}",
+    #                 "spot": "{entity type}",
+    #                 "asoc":
+    #                     [
+    #                         ["{relation type}", "{object span}"],
+    #                         ...
+    #                     ]
+    #             },
+    #             ...
+    #         ]
+
+    #     Args:
+    #         sel_string (str): The SEL string to parse.
+    #         START (str): Start token.
+    #         END (str): End token.
+    #         TARGET (str): Token separating spot and asoc.
+        
+    #     Returns:
+    #         structured_output (List[Dict[str, any]]): A list of dictionaries containing parsed triplets.
+    #     """
+    #     structured_output = []
+
+    #     # # Clean SEL string
+    #     # sel_string = sel_string.replace('<pad>', '').replace('</s>', '').strip()
+
+    #     # The entire SEL is wrapped in start_token/end_token
+    #     if sel_string.startswith(start_token) and sel_string.endswith(end_token):
+    #         sel_string = sel_string[len(start_token):-len(end_token)].strip()
+    #     else:
+    #         return structured_output
+
+    #     # Each block is wrapped in start_token/end_token
+    #     records: List[str] = []
+    #     start_index = sel_string.find(start_token)
+
+    #     # Handle cases where the string might not contain any records or is malformed
+    #     if start_index == -1 and len(sel_string) > 0:
+    #         return structured_output
+
+    #     while start_index != -1:
+    #         end_index = len(sel_string)
+    #         curr_start = start_index
+    #         while curr_start < end_index and curr_start != -1 and end_index != -1:
+    #             end_index = sel_string.find(end_token, curr_start + len(start_token))
+    #             curr_start = sel_string.find(start_token, curr_start + len(start_token))
+            
+    #         if end_index == -1:
+    #             return structured_output
+            
+    #         # Extract the content between start_token and end_token
+    #         record_content = sel_string[start_index + len(start_token):end_index].strip()
+    #         if record_content:
+    #             records.append(record_content)
+
+    #     # Process each record
+    #     for record in records:
+    #         try:
+    #             # Extract entity type
+    #             start = record.find(start_token)
+    #             subj_sep = record.find(target_token)
+    #             if not (start == 0 and subj_sep > start):
+    #                 continue
+                
+    #             entity_type = record[start + len(start_token):subj_sep].strip()
+
+    #             # Extract entity span and relations (if any)
+    #             remaining_record = record[subj_sep + len(target_token):].strip()
+                
+    #             # Check if there are associations after the main span
+    #             rel_start = remaining_record.find(start_token)
+                
+    #             subj_span = ""
+    #             relations = []
+
+    #             if rel_start != -1: # relations exist
+    #                 subj_span = remaining_record[:rel_start].strip()
+    #                 while rel_start != -1:
+    #                     rel_end = remaining_record.find(end_token, rel_start + len(start_token))
+    #                     if rel_end == -1:
+    #                         break
+                        
+    #                     # Extract the content between START and END
+    #                     relation_str = remaining_record[rel_start + len(start_token):rel_end].strip()
+    #                     target_sep = relation_str.find(target_token)
+    #                     if target_sep == -1:
+    #                         continue
+
+    #                     rel_type = relation_str[:target_sep].strip()
+    #                     obj_span = relation_str[target_sep + len(target_token):].strip()
+    #                     if rel_type and obj_span:
+    #                         relations.append((rel_type, obj_span))
+                        
+    #                     rel_start = remaining_record.find(start_token, rel_end + len(end_token))
+
+    #             else: # no relations, the rest is the entity span
+    #                 subj_span = remaining_record
+
+    #             # Add to output if valid
+    #             if entity_type and subj_span:
+    #                 record_info = {'span': subj_span, 'spot': entity_type, 'asoc': relations}
+    #                 structured_output.append(record_info)
+
+    #         except Exception as e:
+    #             print(f"Error parsing block: {record}\nError: {e}")
+    #             continue
+
+    #     return structured_output
