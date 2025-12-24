@@ -1,4 +1,7 @@
-/conda-env
-/data
+# Env
+/data-env
 **__pycache__/
+
+# Data
+/data
 predictions/
